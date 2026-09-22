@@ -3,7 +3,7 @@ from syougi_rl.game.state import GameState
 from syougi_rl.engine.inference import list_checkpoints
 from syougi_rl.gui.worker import InferenceWorker
 import syougi_rl.gui.main as gui_main
-from syougi_rl.gui.board import piece_label
+from syougi_rl.gui.board import piece_label, piece_polygon
 
 
 def test_selecting_initial_pawn_returns_legal_marker_moves():
@@ -61,3 +61,12 @@ def test_piece_labels_are_japanese_including_promotions():
     assert piece_label(8) == "玉"
     assert piece_label(9) == "と"
     assert piece_label(13) == "馬"
+
+
+def test_piece_polygon_points_up_for_self_and_down_for_opponent():
+    own = piece_polygon(100, inverted=False)
+    opponent = piece_polygon(100, inverted=True)
+
+    assert min(point.y() for point in own) < max(point.y() for point in own)
+    assert own[0].y() < own[2].y()
+    assert opponent[0].y() > opponent[2].y()

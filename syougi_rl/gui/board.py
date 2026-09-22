@@ -6,7 +6,7 @@ from typing import Iterable
 
 import shogi
 from PySide6.QtCore import QPointF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QFont, QFontDatabase, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QFontDatabase, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QWidget
 
 from syougi_rl.game.state import GameState
@@ -42,6 +42,21 @@ def japanese_font(size: int) -> QFont:
         if family in available:
             return QFont(family, size)
     return QFont("sans-serif", size)
+
+
+def piece_polygon(cell: float, inverted: bool = False) -> QPolygonF:
+    """Create a wooden shogi-piece pentagon centered at the origin."""
+    half = cell * 0.42
+    points = [
+        QPointF(0.0, -cell * 0.45),
+        QPointF(half, -cell * 0.16),
+        QPointF(cell * 0.30, cell * 0.45),
+        QPointF(-cell * 0.30, cell * 0.45),
+        QPointF(-half, -cell * 0.16),
+    ]
+    if inverted:
+        points = [QPointF(point.x(), -point.y()) for point in points]
+    return QPolygonF(points)
 
 
 class BoardController:
@@ -135,5 +150,16 @@ class ShogiBoardWidget(QWidget):
             if piece is None:
                 continue
             row, col = divmod(square, 9)
-            painter.setPen(QPen(QColor("#222222")))
-            painter.drawText(x0 + col * cell, y0 + row * cell, cell, cell, Qt.AlignCenter, piece_label(piece.piece_type))
+            center_x = x0 + (col + 0.5) * cell
+            center_y = y0 + (row + 0.5) * cell
+            painter.save()
+            painter.translate(center_x, center_y)
+            if piece.color == shogi.WHITE:
+                painter.rotate(180)
+            painter.setBrush(QBrush(QColor("#d7a45e")))
+            painter.setPen(QPen(QColor("#6e431f"), max(1, int(cell * 0.025))))
+            painter.drawPolygon(piece_polygon(cell, inverted=False))
+            painter.setPen(QPen(QColor("#21170e")))
+            painter.setFont(japanese_font(max(12, int(cell * 0.48))))
+            painter.drawText(-cell / 2, -cell / 2, cell, cell, Qt.AlignCenter, piece_label(piece.piece_type))
+            painter.restore()
