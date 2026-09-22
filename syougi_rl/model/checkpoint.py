@@ -48,6 +48,9 @@ def load_checkpoint(
     target_device = select_device(device)
     try:
         payload = torch.load(destination, map_location=target_device, weights_only=True)
+    except RuntimeError:
+        # Preserve CUDA runtime failures so the inference engine can retry on CPU.
+        raise
     except Exception as exc:
         raise ValueError(f"unsupported or corrupt Checkpoint: {destination}") from exc
     if not isinstance(payload, dict) or payload.get("checkpoint_version") != CHECKPOINT_VERSION:

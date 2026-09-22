@@ -1,4 +1,5 @@
 import torch
+import syougi_rl.engine.inference as inference_module
 
 from syougi_rl.engine.inference import CheckpointEngine, list_checkpoints
 from syougi_rl.game.state import GameState
@@ -41,3 +42,24 @@ def test_invalid_checkpoint_has_descriptive_error(tmp_path):
         assert "Checkpoint" in str(exc)
     else:
         raise AssertionError("invalid checkpoint was accepted")
+
+
+def test_cuda_load_runtime_error_retries_checkpoint_on_cpu(tmp_path, monkeypatch):
+    path = tmp_path / "epoch_000004.pt"
+    _checkpoint(path)
+    calls = []
+
+    monkeypatch.setattr(inference_module, "select_device", lambda requested: torch.device("cuda" if requested == "cuda" else "cpu"))
+
+    def fake_load(_path, model, device):
+        calls.append(str(device))
+        if str(device) == "cuda":
+            raise RuntimeError("CUDA out of memory")
+        model.to("cpu")
+        return {"epoch": 4}
+
+    monkeypatch.setattr(inference_module, "load_checkpoint", fake_load)
+    engine = inference_module.CheckpointEngine.from_checkpoint(path, device="cuda")
+
+    assert engine.device.type == "cpu"
+    assert calls == ["cuda", "cpu"]

@@ -69,6 +69,8 @@ def _validate_config(config: dict[str, Any]) -> None:
         raise ValueError("checkpoint_dir must be a non-empty path")
     if not isinstance(config["device"], str) or config["device"] not in {"auto", "cpu", "cuda"}:
         raise ValueError("device must be one of: auto, cuda, cpu")
+    if isinstance(config["temperature"], bool) or not isinstance(config["temperature"], (int, float)):
+        raise ValueError("temperature must be a number")
     if not math.isfinite(float(config["temperature"])) or float(config["temperature"]) < 0:
         raise ValueError("temperature must be finite and non-negative")
 

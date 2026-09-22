@@ -122,6 +122,18 @@ def test_config_validation_rejects_negative_seed_boolean_learning_rate_and_list_
             raise AssertionError(f"invalid {expected} was accepted")
 
 
+def test_config_validation_rejects_boolean_or_null_temperature(tmp_path):
+    for value in ("true", "null", "[]"):
+        config_path = tmp_path / f"bad-temperature-{value}.yaml"
+        config_path.write_text(f"temperature: {value}\n", encoding="utf-8")
+        try:
+            train(config_path)
+        except ValueError as exc:
+            assert "temperature" in str(exc)
+        else:
+            raise AssertionError(f"invalid temperature {value} was accepted")
+
+
 def test_tiny_positive_temperature_stays_numerically_stable(tmp_path):
     config_path = tmp_path / "tiny-temperature.yaml"
     config_path.write_text(
