@@ -3,6 +3,7 @@ from syougi_rl.game.state import GameState
 from syougi_rl.engine.inference import list_checkpoints
 from syougi_rl.gui.worker import InferenceWorker
 import syougi_rl.gui.main as gui_main
+from syougi_rl.gui.board import piece_label
 
 
 def test_selecting_initial_pawn_returns_legal_marker_moves():
@@ -53,3 +54,10 @@ def test_qt_platform_falls_back_to_offscreen_when_xcb_dependencies_are_missing(m
     selected = gui_main.configure_qt_platform()
 
     assert selected == "offscreen"
+
+
+def test_piece_labels_are_japanese_including_promotions():
+    assert piece_label(1) == "歩"
+    assert piece_label(8) == "玉"
+    assert piece_label(9) == "と"
+    assert piece_label(13) == "馬"

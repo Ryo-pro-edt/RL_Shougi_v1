@@ -6,10 +6,42 @@ from typing import Iterable
 
 import shogi
 from PySide6.QtCore import QPointF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QFontDatabase, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
 from syougi_rl.game.state import GameState
+
+
+PIECE_LABELS = {
+    1: "歩",
+    2: "香",
+    3: "桂",
+    4: "銀",
+    5: "金",
+    6: "角",
+    7: "飛",
+    8: "玉",
+    9: "と",
+    10: "杏",
+    11: "圭",
+    12: "全",
+    13: "馬",
+    14: "龍",
+}
+
+
+def piece_label(piece_type: int) -> str:
+    """Return the standard Japanese glyph for a python-shogi piece type."""
+    return PIECE_LABELS.get(int(piece_type), "?")
+
+
+def japanese_font(size: int) -> QFont:
+    """Prefer installed Japanese fonts while keeping Windows/Linux fallbacks."""
+    available = set(QFontDatabase.families())
+    for family in ("Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans CJK JP", "Noto Serif CJK JP", "MS Gothic"):
+        if family in available:
+            return QFont(family, size)
+    return QFont("sans-serif", size)
 
 
 class BoardController:
@@ -97,11 +129,11 @@ class ShogiBoardWidget(QWidget):
             painter.setPen(QPen(QColor("#d12b2b"), 3))
             painter.drawRect(x0 + col * cell + 2, y0 + row * cell + 2, cell - 4, cell - 4)
 
-        painter.setFont(QFont("Yu Gothic UI", max(12, int(cell * 0.55))))
+        painter.setFont(japanese_font(max(12, int(cell * 0.55))))
         for square in range(81):
             piece = self.controller.state.board.piece_at(square)
             if piece is None:
                 continue
             row, col = divmod(square, 9)
             painter.setPen(QPen(QColor("#222222")))
-            painter.drawText(x0 + col * cell, y0 + row * cell, cell, cell, Qt.AlignCenter, piece.symbol())
+            painter.drawText(x0 + col * cell, y0 + row * cell, cell, cell, Qt.AlignCenter, piece_label(piece.piece_type))

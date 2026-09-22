@@ -84,6 +84,7 @@ Linuxで `Could not load the Qt platform plugin "xcb"` が出る場合は、X11�
 
 ```bash
 sudo apt install libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1
+sudo apt install fonts-noto-cjk
 ```
 
 表示サーバーのないCI/コンテナでは起動時に自動で `QT_QPA_PLATFORM=offscreen` へ切り替わります。WindowsではこのLinux向け設定は不要です。
