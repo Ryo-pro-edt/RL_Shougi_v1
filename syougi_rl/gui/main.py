@@ -29,7 +29,8 @@ from syougi_rl.gui.worker import InferenceWorker
 
 def _xcb_dependencies_available() -> bool:
     """Return whether the Linux X11 libraries needed by Qt's xcb plugin exist."""
-    return bool(ctypes.util.find_library("xkbcommon-x11") and ctypes.util.find_library("xcb-cursor"))
+    required = ("xkbcommon-x11", "xcb-cursor", "xcb-icccm", "xcb-keysyms")
+    return all(ctypes.util.find_library(name) for name in required)
 
 
 def configure_qt_platform() -> str | None:

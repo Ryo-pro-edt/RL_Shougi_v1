@@ -83,7 +83,7 @@ python play_gui.py
 Linuxで `Could not load the Qt platform plugin "xcb"` が出る場合は、X11用依存を入れてください。
 
 ```bash
-sudo apt install libxkbcommon-x11-0 libxcb-cursor0
+sudo apt install libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1
 ```
 
 表示サーバーのないCI/コンテナでは起動時に自動で `QT_QPA_PLATFORM=offscreen` へ切り替わります。WindowsではこのLinux向け設定は不要です。
