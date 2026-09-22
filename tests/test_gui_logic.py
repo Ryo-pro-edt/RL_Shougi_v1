@@ -4,6 +4,7 @@ from syougi_rl.engine.inference import list_checkpoints
 from syougi_rl.gui.worker import InferenceWorker
 import syougi_rl.gui.main as gui_main
 from syougi_rl.gui.board import piece_label, piece_polygon, piece_text_color
+from collections import Counter
 
 
 def test_selecting_initial_pawn_returns_legal_marker_moves():
@@ -86,3 +87,8 @@ def test_check_status_is_added_when_side_to_move_is_in_check():
 
     assert state.board.is_check()
     assert gui_main.status_with_check("あなたの手番", state) == "あなたの手番【王手】"
+
+
+def test_hand_display_formats_opponent_captured_pieces_in_japanese():
+    assert gui_main.format_hand(Counter({1: 2, 6: 1})) == "歩×2 角×1"
+    assert gui_main.format_hand(Counter()) == "なし"

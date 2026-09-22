@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from syougi_rl.engine.inference import CheckpointEngine, list_checkpoints
-from syougi_rl.gui.board import BoardController, ShogiBoardWidget
+from syougi_rl.gui.board import BoardController, ShogiBoardWidget, piece_label
 from syougi_rl.gui.worker import InferenceWorker
 
 
@@ -65,6 +65,12 @@ def status_with_check(text: str, state) -> str:
     if state.board.is_check() and "王手" not in text:
         return f"{text}【王手】"
     return text
+
+
+def format_hand(hand) -> str:
+    """Format a captured-piece Counter using Japanese piece labels."""
+    parts = [f"{piece_label(piece_type)}×{hand.get(piece_type, 0)}" for piece_type in range(1, 8) if hand.get(piece_type, 0)]
+    return " ".join(parts) if parts else "なし"
 
 
 class GameWindow(QMainWindow):
@@ -110,6 +116,8 @@ class GameWindow(QMainWindow):
             button.clicked.connect(lambda _checked=False, p=piece_type: self.on_drop_piece(p))
             self.hand_buttons[piece_type] = button
             self.hand_layout.addWidget(button)
+        self.opponent_hand_label = QLabel("なし")
+        form.addRow("相手の持ち駒", self.opponent_hand_label)
         form.addRow("持ち駒", self.hand_layout)
 
         self.status = QLabel("Checkpointを選択して対局開始を押してください")
@@ -182,6 +190,8 @@ class GameWindow(QMainWindow):
 
     def refresh_hand_buttons(self) -> None:
         hand = self.controller.state.board.pieces_in_hand[self.human_color]
+        opponent_color = shogi.WHITE if self.human_color == shogi.BLACK else shogi.BLACK
+        self.opponent_hand_label.setText(format_hand(self.controller.state.board.pieces_in_hand[opponent_color]))
         enabled = self.engine is not None and not self.ai_error and self.controller.state.board.turn == self.human_color
         for piece_type, button in self.hand_buttons.items():
             label = button.text().split("×", 1)[0]
