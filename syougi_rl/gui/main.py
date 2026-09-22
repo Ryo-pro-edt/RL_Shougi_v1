@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 import shogi
-from PySide6.QtCore import QThread, Slot
+from PySide6.QtCore import QThread, QTimer, Slot
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -50,6 +50,23 @@ def configure_qt_platform() -> str | None:
     return None
 
 
+def game_result_label(result: str, human_color: int) -> str:
+    """Convert a python-shogi result into a human-facing outcome."""
+    if result == "1/2-1/2":
+        return "引き分け"
+    if result not in {"1-0", "0-1"}:
+        return "対局中"
+    human_won = (result == "1-0") == (human_color == shogi.BLACK)
+    return "勝利" if human_won else "敗北"
+
+
+def status_with_check(text: str, state) -> str:
+    """Append a visible 王手 marker when the side to move is checked."""
+    if state.board.is_check() and "王手" not in text:
+        return f"{text}【王手】"
+    return text
+
+
 class GameWindow(QMainWindow):
     def __init__(self, checkpoint_dir: str | Path = "checkpoints") -> None:
         super().__init__()
@@ -61,6 +78,12 @@ class GameWindow(QMainWindow):
         self.worker: InferenceWorker | None = None
         self._game_generation = 0
         self.ai_error = False
+        self.game_over_announced = False
+        self.thinking_phase = 0
+        self.thinking_base = "AIが考えています"
+        self.thinking_timer = QTimer(self)
+        self.thinking_timer.setInterval(350)
+        self.thinking_timer.timeout.connect(self._animate_thinking)
 
         self.checkpoint_box = QComboBox()
         self.checkpoint_box.addItems([str(path) for path in list_checkpoints(checkpoint_dir)])
@@ -126,7 +149,8 @@ class GameWindow(QMainWindow):
         self.human_color = self.side_box.currentData()
         self._game_generation += 1
         self.ai_error = False
-        self.status.setText(f"対局開始（推論デバイス: {self.engine.device.type}）")
+        self.game_over_announced = False
+        self._set_status(f"対局開始（推論デバイス: {self.engine.device.type}）")
         self.refresh_hand_buttons()
         self.board.update()
         if self.human_color == shogi.WHITE:
@@ -167,14 +191,14 @@ class GameWindow(QMainWindow):
 
     def _after_human_move(self) -> None:
         if self.controller.state.is_game_over():
-            self.status.setText(f"終局: {self.controller.state.result()}")
+            self._finish_game()
             return
         self.request_ai_move()
 
     def request_ai_move(self) -> None:
         if self.engine is None or self.thread is not None:
             return
-        self.status.setText("AIが考えています…")
+        self._start_thinking()
         self.thread = QThread(self)
         generation = self._game_generation
         self.worker = InferenceWorker(self.engine, self.controller.state, self.simulations.value(), generation)
@@ -196,23 +220,53 @@ class GameWindow(QMainWindow):
             self.controller.state.push(move)
             self.board.update()
             self.refresh_hand_buttons()
-            self.status.setText("あなたの手番です")
+            self._stop_thinking()
             if self.controller.state.is_game_over():
-                self.status.setText(f"終局: {self.controller.state.result()}")
+                self._finish_game()
+            else:
+                self._set_status("あなたの手番です")
         except ValueError as exc:
             self.on_ai_error(str(exc))
 
     @Slot(str)
     def on_ai_error(self, message: str) -> None:
+        self._stop_thinking()
         self.ai_error = True
-        self.status.setText(f"AIエラー: {message}")
+        self._set_status(f"AIエラー: {message}")
         QMessageBox.critical(self, "AIエラー", message)
 
     def on_ai_finished(self) -> None:
+        self._stop_thinking()
         self.thread = None
         self.worker = None
 
+    def _set_status(self, text: str) -> None:
+        self.status.setText(status_with_check(text, self.controller.state))
+
+    def _start_thinking(self) -> None:
+        self.thinking_phase = 0
+        self.thinking_timer.start()
+        self._animate_thinking()
+
+    def _animate_thinking(self) -> None:
+        dots = "." * self.thinking_phase
+        self._set_status(f"{self.thinking_base}{dots}")
+        self.thinking_phase = (self.thinking_phase + 1) % 4
+
+    def _stop_thinking(self) -> None:
+        self.thinking_timer.stop()
+
+    def _finish_game(self) -> None:
+        self._stop_thinking()
+        result = self.controller.state.result()
+        outcome = game_result_label(result, self.human_color)
+        self._set_status(f"終局: {outcome}（{result}）")
+        if not self.game_over_announced:
+            self.game_over_announced = True
+            QMessageBox.information(self, outcome, f"対局結果：{outcome}\n{result}")
+
     def closeEvent(self, event) -> None:
+        self._stop_thinking()
         if self.thread is not None:
             self.thread.quit()
             if not self.thread.wait(10_000):

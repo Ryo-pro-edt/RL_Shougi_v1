@@ -70,3 +70,17 @@ def test_piece_polygon_points_up_for_self_and_down_for_opponent():
     assert min(point.y() for point in own) < max(point.y() for point in own)
     assert own[0].y() < own[2].y()
     assert opponent[0].y() > opponent[2].y()
+
+
+def test_game_result_label_is_from_human_perspective():
+    assert gui_main.game_result_label("1-0", 0) == "勝利"
+    assert gui_main.game_result_label("1-0", 1) == "敗北"
+    assert gui_main.game_result_label("0-1", 1) == "勝利"
+    assert gui_main.game_result_label("1/2-1/2", 0) == "引き分け"
+
+
+def test_check_status_is_added_when_side_to_move_is_in_check():
+    state = GameState.from_sfen("4k4/9/9/9/9/9/9/4r4/4K4 b - 1")
+
+    assert state.board.is_check()
+    assert gui_main.status_with_check("あなたの手番", state) == "あなたの手番【王手】"
