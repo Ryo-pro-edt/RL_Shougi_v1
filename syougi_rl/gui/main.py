@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ctypes.util
+import os
 from pathlib import Path
 
 import shogi
@@ -23,6 +25,28 @@ from PySide6.QtWidgets import (
 from syougi_rl.engine.inference import CheckpointEngine, list_checkpoints
 from syougi_rl.gui.board import BoardController, ShogiBoardWidget
 from syougi_rl.gui.worker import InferenceWorker
+
+
+def _xcb_dependencies_available() -> bool:
+    """Return whether the Linux X11 libraries needed by Qt's xcb plugin exist."""
+    return bool(ctypes.util.find_library("xkbcommon-x11") and ctypes.util.find_library("xcb-cursor"))
+
+
+def configure_qt_platform() -> str | None:
+    """Select a safe Qt platform before QApplication is constructed.
+
+    Windows uses the native platform. On Linux, an explicitly selected platform
+    is respected; otherwise a missing X11 display/plugin dependency falls back
+    to offscreen so CI/headless launches do not abort with a core dump.
+    """
+    if os.environ.get("QT_QPA_PLATFORM") or os.name == "nt":
+        return os.environ.get("QT_QPA_PLATFORM")
+    has_display = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    if not has_display or (os.environ.get("DISPLAY") and not _xcb_dependencies_available()):
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        print("Qt display dependencies are unavailable; using QT_QPA_PLATFORM=offscreen", flush=True)
+        return "offscreen"
+    return None
 
 
 class GameWindow(QMainWindow):
@@ -202,6 +226,7 @@ class GameWindow(QMainWindow):
 def run_gui() -> int:
     from PySide6.QtWidgets import QApplication
 
+    configure_qt_platform()
     app = QApplication.instance() or QApplication([])
     window = GameWindow()
     window.resize(700, 780)

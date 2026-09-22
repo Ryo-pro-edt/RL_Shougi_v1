@@ -2,6 +2,7 @@ from syougi_rl.gui.board import BoardController
 from syougi_rl.game.state import GameState
 from syougi_rl.engine.inference import list_checkpoints
 from syougi_rl.gui.worker import InferenceWorker
+import syougi_rl.gui.main as gui_main
 
 
 def test_selecting_initial_pawn_returns_legal_marker_moves():
@@ -42,3 +43,13 @@ def test_inference_worker_copies_state_at_construction():
     worker = InferenceWorker(None, GameState.initial(), simulations=1)
 
     assert worker.state.board.sfen() == GameState.initial().board.sfen()
+
+
+def test_qt_platform_falls_back_to_offscreen_when_xcb_dependencies_are_missing(monkeypatch):
+    monkeypatch.delenv("QT_QPA_PLATFORM", raising=False)
+    monkeypatch.setattr(gui_main, "_xcb_dependencies_available", lambda: False)
+    monkeypatch.setenv("DISPLAY", ":9")
+
+    selected = gui_main.configure_qt_platform()
+
+    assert selected == "offscreen"

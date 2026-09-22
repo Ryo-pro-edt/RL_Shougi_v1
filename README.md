@@ -80,6 +80,14 @@ python play_gui.py
 
 起動画面で `checkpoints/epoch_000001.pt` などのCheckpointを選び、先手/後手と探索回数を指定して「対局開始」を押します。推論も `auto` が既定で、CUDA利用可能ならGPU、不可ならCPUです。自分の駒をクリックすると合法な移動先がドットで表示されます。持ち駒ボタンをクリックすると合法な打ち先が表示されます。成りが選べる手では確認ダイアログを表示します。
 
+Linuxで `Could not load the Qt platform plugin "xcb"` が出る場合は、X11用依存を入れてください。
+
+```bash
+sudo apt install libxkbcommon-x11-0 libxcb-cursor0
+```
+
+表示サーバーのないCI/コンテナでは起動時に自動で `QT_QPA_PLATFORM=offscreen` へ切り替わります。WindowsではこのLinux向け設定は不要です。
+
 ## テスト
 
 ```powershell
