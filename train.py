@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import Any
 
 from syougi_rl.training.loop import train
@@ -44,7 +45,10 @@ def config_overrides(args: argparse.Namespace) -> dict[str, Any]:
 
 def main() -> None:
     args = build_parser().parse_args()
-    outputs = train(args.config, config_overrides(args))
+    config_path = args.config
+    if config_path == "config/default.yaml" and not Path(config_path).is_file():
+        config_path = None
+    outputs = train(config_path, config_overrides(args))
     for output in outputs:
         print(f"saved Checkpoint: {output}")
 

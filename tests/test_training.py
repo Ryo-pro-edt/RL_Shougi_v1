@@ -108,3 +108,27 @@ def test_config_validation_rejects_non_finite_learning_rate_and_null_checkpoint_
         assert "learning_rate" in str(exc) or "checkpoint_dir" in str(exc)
     else:
         raise AssertionError("invalid numeric/path settings were accepted")
+
+
+def test_config_validation_rejects_negative_seed_boolean_learning_rate_and_list_device(tmp_path):
+    for text, expected in (("seed: -1\n", "seed"), ("learning_rate: true\n", "learning_rate"), ("device: []\n", "device")):
+        config_path = tmp_path / f"bad-{expected}.yaml"
+        config_path.write_text(text, encoding="utf-8")
+        try:
+            train(config_path)
+        except ValueError as exc:
+            assert expected in str(exc)
+        else:
+            raise AssertionError(f"invalid {expected} was accepted")
+
+
+def test_tiny_positive_temperature_stays_numerically_stable(tmp_path):
+    config_path = tmp_path / "tiny-temperature.yaml"
+    config_path.write_text(
+        yaml.safe_dump({"device": "cpu", "epochs": 1, "self_play_games": 1, "max_moves": 1,
+                        "mcts_simulations": 2, "updates_per_epoch": 1, "batch_size": 1,
+                        "temperature": 0.0001, "checkpoint_dir": str(tmp_path / "checkpoints")}),
+        encoding="utf-8",
+    )
+
+    assert train(config_path)

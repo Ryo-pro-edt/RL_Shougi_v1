@@ -108,7 +108,7 @@ class GameWindow(QMainWindow):
             self.request_ai_move()
 
     def on_square_clicked(self, square: int) -> None:
-        if self.engine is None or self.ai_error or self.controller.state.board.turn != self.human_color:
+        if self.engine is None or self.ai_error or self.controller.state.is_game_over() or self.controller.state.board.turn != self.human_color:
             return
         if self.controller.highlighted_moves:
             candidates = self.controller.moves_for_destination(square)
@@ -126,7 +126,7 @@ class GameWindow(QMainWindow):
         self.board.update()
 
     def on_drop_piece(self, piece_type: int) -> None:
-        if self.engine is None or self.ai_error or self.controller.state.board.turn != self.human_color:
+        if self.engine is None or self.ai_error or self.controller.state.is_game_over() or self.controller.state.board.turn != self.human_color:
             return
         self.controller.select_drop(piece_type)
         self.board.update()

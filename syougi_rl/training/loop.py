@@ -57,15 +57,17 @@ def _validate_config(config: dict[str, Any]) -> None:
     for key in positive:
         if not isinstance(config[key], int) or isinstance(config[key], bool) or config[key] < 1:
             raise ValueError(f"{key} must be at least 1")
-    if float(config["learning_rate"]) <= 0:
-        raise ValueError("learning_rate must be positive")
+    if isinstance(config["learning_rate"], bool) or not isinstance(config["learning_rate"], (int, float)):
+        raise ValueError("learning_rate must be a number")
     if not math.isfinite(float(config["learning_rate"])):
         raise ValueError("learning_rate must be finite")
-    if not isinstance(config["seed"], int) or isinstance(config["seed"], bool):
-        raise ValueError("seed must be an integer")
+    if float(config["learning_rate"]) <= 0:
+        raise ValueError("learning_rate must be positive")
+    if not isinstance(config["seed"], int) or isinstance(config["seed"], bool) or not 0 <= config["seed"] < 2**32:
+        raise ValueError("seed must be an integer between 0 and 2**32 - 1")
     if not isinstance(config["checkpoint_dir"], str) or not config["checkpoint_dir"].strip():
         raise ValueError("checkpoint_dir must be a non-empty path")
-    if config["device"] not in {"auto", "cpu", "cuda"}:
+    if not isinstance(config["device"], str) or config["device"] not in {"auto", "cpu", "cuda"}:
         raise ValueError("device must be one of: auto, cuda, cpu")
     if not math.isfinite(float(config["temperature"])) or float(config["temperature"]) < 0:
         raise ValueError("temperature must be finite and non-negative")
@@ -91,8 +93,10 @@ def _play_game(model: PolicyValueNet, config: dict[str, Any], device: torch.devi
         legal_ids = [encode_move(candidate) for candidate in legal_moves]
         temperature = float(config["temperature"])
         if temperature > 0:
-            weights = np.power(np.maximum(policy[legal_ids], 1e-12), 1.0 / temperature)
-            weights /= weights.sum()
+            log_weights = np.log(np.maximum(policy[legal_ids], 1e-12)) / temperature
+            log_weights -= np.max(log_weights)
+            weights = np.exp(log_weights)
+            weights /= max(float(weights.sum()), 1e-12)
             chosen_id = int(np.random.choice(legal_ids, p=weights))
             move = next(candidate for candidate in legal_moves if encode_move(candidate) == chosen_id)
         positions.append((features, policy, state.board.turn))
@@ -122,7 +126,7 @@ def _update(model: PolicyValueNet, optimizer: torch.optim.Optimizer, replay: Rep
     return sum(losses) / len(losses)
 
 
-def train(config_path: str | Path = "config/default.yaml", overrides: dict[str, Any] | None = None) -> list[Path]:
+def train(config_path: str | Path | None = "config/default.yaml", overrides: dict[str, Any] | None = None) -> list[Path]:
     config = load_config(config_path)
     if overrides:
         config.update(overrides)
