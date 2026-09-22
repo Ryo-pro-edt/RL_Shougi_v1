@@ -25,7 +25,7 @@ train.py / notebooks/train.ipynb
   PySide6 GUI (BoardController + InferenceWorker)
 ```
 
-`syougi_rl.game` は29チャネルの盤面特徴量と、通常手・成り・駒打ちを含む13,689個の固定行動IDを提供します。`syougi_rl.model` は方策・価値Residual CNNとCheckpoint I/O、`syougi_rl.training` は自己対戦と更新、`syougi_rl.engine` はGUI非依存の推論、`syougi_rl.gui` は盤面表示とワーカースレッドを担当します。
+`syougi_rl.game` は43チャネル（14駒種×両色、持ち駒、手番）の盤面特徴量と、通常手・成り・駒打ちを含む13,689個の固定行動IDを提供します。`syougi_rl.model` は方策・価値Residual CNNとCheckpoint I/O、`syougi_rl.training` は自己対戦と更新、`syougi_rl.engine` はGUI非依存の推論、`syougi_rl.gui` は盤面表示とワーカースレッドを担当します。
 
 ## Windowsセットアップ
 
@@ -62,7 +62,7 @@ python train.py --config config/default.yaml --device cuda `
   --updates-per-epoch 100 --batch-size 64
 ```
 
-設定ファイルには `epochs`, `self_play_games`, `max_moves`, `mcts_simulations`, `updates_per_epoch`, `batch_size`, `learning_rate`, `checkpoint_every`, `checkpoint_dir` を指定できます。CUDAが使用不能な環境で `--device cuda` を指定した場合も、警告後にCPUへ切り替わります。
+設定ファイルには `epochs`, `self_play_games`, `max_moves`, `mcts_simulations`, `temperature`, `updates_per_epoch`, `batch_size`, `learning_rate`, `checkpoint_every`, `checkpoint_dir` を指定できます。`temperature` は自己対戦の訪問数サンプリング温度です。CUDAが使用不能な環境で `--device cuda` を指定した場合も、警告後にCPUへ切り替わります。
 
 Jupyterからも同じAPIを実行できます。
 

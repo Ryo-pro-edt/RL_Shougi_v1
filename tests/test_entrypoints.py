@@ -4,12 +4,13 @@ from syougi_rl.training.loop import load_config
 
 def test_cli_parser_exposes_training_overrides():
     args = build_parser().parse_args(
-        ["--config", "config/default.yaml", "--device", "cpu", "--epochs", "3", "--mcts-simulations", "2"]
+        ["--config", "config/default.yaml", "--device", "cpu", "--epochs", "3", "--mcts-simulations", "2", "--temperature", "0"]
     )
 
     assert args.device == "cpu"
     assert args.epochs == 3
     assert config_overrides(args)["mcts_simulations"] == 2
+    assert config_overrides(args)["temperature"] == 0
 
 
 def test_config_validation_rejects_zero_epochs(tmp_path):

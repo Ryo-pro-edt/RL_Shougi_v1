@@ -16,6 +16,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--self-play-games", type=int)
     parser.add_argument("--max-moves", type=int)
     parser.add_argument("--mcts-simulations", type=int)
+    parser.add_argument("--temperature", type=float)
     parser.add_argument("--updates-per-epoch", type=int)
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--learning-rate", type=float)
@@ -31,6 +32,7 @@ def config_overrides(args: argparse.Namespace) -> dict[str, Any]:
         "self_play_games": args.self_play_games,
         "max_moves": args.max_moves,
         "mcts_simulations": args.mcts_simulations,
+        "temperature": args.temperature,
         "updates_per_epoch": args.updates_per_epoch,
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,

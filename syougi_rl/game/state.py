@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import copy
 
 import numpy as np
 import shogi
 
 
-FEATURE_PLANES = 31  # 16 board planes, 14 hand-count planes, one side-to-move plane.
+FEATURE_PLANES = 43  # 28 board planes, 14 hand-count planes, one side-to-move plane.
 
 
 @dataclass
@@ -24,8 +25,8 @@ class GameState:
         return cls(shogi.Board(sfen))
 
     def copy(self) -> "GameState":
-        # python-shogi exposes SFEN serialization but no Board.copy() method.
-        return GameState(shogi.Board(self.board.sfen()))
+        # deepcopy preserves python-shogi's move and repetition bookkeeping.
+        return GameState(copy.deepcopy(self.board))
 
     def legal_moves(self) -> list[shogi.Move]:
         return list(self.board.legal_moves)
@@ -53,12 +54,12 @@ class GameState:
             if piece is None:
                 continue
             rank, file_ = divmod(square, 9)
-            color_offset = 0 if piece.color == shogi.BLACK else 8
+            color_offset = 0 if piece.color == shogi.BLACK else 14
             features[color_offset + piece.piece_type - 1, rank, file_] = 1.0
 
-        for color, offset in ((shogi.BLACK, 16), (shogi.WHITE, 23)):
+        for color, offset in ((shogi.BLACK, 28), (shogi.WHITE, 35)):
             for piece_type in range(1, 8):
                 count = self.board.pieces_in_hand[color].get(piece_type, 0)
                 features[offset + piece_type - 1, :, :] = float(count) / 18.0
-        features[30, :, :] = float(self.board.turn == shogi.BLACK)
+        features[42, :, :] = float(self.board.turn == shogi.BLACK)
         return features

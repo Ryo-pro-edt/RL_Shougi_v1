@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import shogi
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Slot
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -151,11 +151,11 @@ class GameWindow(QMainWindow):
             return
         self.status.setText("AIが考えています…")
         self.thread = QThread(self)
-        self.worker = InferenceWorker(self.engine, self.controller.state, self.simulations.value())
         generation = self._game_generation
+        self.worker = InferenceWorker(self.engine, self.controller.state, self.simulations.value(), generation)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
-        self.worker.move_ready.connect(lambda move, gen=generation: self.on_ai_move(move, gen))
+        self.worker.move_ready.connect(self.on_ai_move)
         self.worker.error.connect(self.on_ai_error)
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
@@ -163,8 +163,9 @@ class GameWindow(QMainWindow):
         self.thread.finished.connect(self.on_ai_finished)
         self.thread.start()
 
-    def on_ai_move(self, move, generation: int | None = None) -> None:
-        if generation is not None and generation != self._game_generation:
+    @Slot(object, int)
+    def on_ai_move(self, move, generation: int) -> None:
+        if generation != self._game_generation:
             return
         try:
             self.controller.state.push(move)
@@ -176,6 +177,7 @@ class GameWindow(QMainWindow):
         except ValueError as exc:
             self.on_ai_error(str(exc))
 
+    @Slot(str)
     def on_ai_error(self, message: str) -> None:
         self.ai_error = True
         self.status.setText(f"AIエラー: {message}")
@@ -188,7 +190,10 @@ class GameWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         if self.thread is not None:
             self.thread.quit()
-            self.thread.wait(10_000)
+            if not self.thread.wait(10_000):
+                event.ignore()
+                self.status.setText("AI探索終了待ちです。もう一度閉じてください")
+                return
             self.thread = None
             self.worker = None
         event.accept()

@@ -12,7 +12,7 @@ def test_initial_position_has_thirty_legal_moves_and_features():
     assert len(state.legal_moves()) == 30
     features = state.features()
     assert isinstance(features, np.ndarray)
-    assert features.shape == (31, 9, 9)
+    assert features.shape == (43, 9, 9)
     assert features.dtype == np.float32
 
 
@@ -59,4 +59,23 @@ def test_copy_is_independent_and_piece_planes_do_not_overlap_hands():
     assert copied.board.sfen() != state.board.sfen()
     # Black/white kings have dedicated board planes, not hand planes.
     assert state.features()[7].sum() == 1.0
-    assert state.features()[15].sum() == 1.0
+    assert state.features()[21].sum() == 1.0
+
+
+def test_promoted_piece_has_its_own_board_plane():
+    state = GameState.from_sfen("4k4/9/9/9/9/9/9/2+B6/4K4 w - 1")
+
+    features = state.features()
+
+    assert features[12].sum() == 1.0  # black promoted bishop, piece type 13
+
+
+def test_copy_preserves_fourfold_repetition_history():
+    state = GameState.initial()
+    for usi in ["7g7f", "3c3d", "7f7g", "3d3c"] * 3:
+        state.board.push_usi(usi)
+
+    copied = state.copy()
+
+    assert state.board.is_fourfold_repetition()
+    assert copied.board.is_fourfold_repetition()

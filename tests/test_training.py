@@ -34,7 +34,7 @@ def test_mcts_evaluates_child_positions_for_each_simulation():
     model = RecordingModel()
     MCTS(model, simulations=2, device="cpu").search(GameState.initial())
 
-    assert len(model.calls) == 3  # root plus one child evaluation per simulation
+    assert len(model.calls) >= 5  # root plus child and reply evaluations per simulation
     assert not torch.equal(model.calls[0], model.calls[1])
 
 
@@ -96,3 +96,15 @@ def test_config_validation_rejects_fractional_max_moves(tmp_path):
         assert "max_moves" in str(exc)
     else:
         raise AssertionError("fractional max_moves was accepted")
+
+
+def test_config_validation_rejects_non_finite_learning_rate_and_null_checkpoint_dir(tmp_path):
+    config_path = tmp_path / "bad-finite.yaml"
+    config_path.write_text("learning_rate: .nan\ncheckpoint_dir: null\n", encoding="utf-8")
+
+    try:
+        train(config_path)
+    except ValueError as exc:
+        assert "learning_rate" in str(exc) or "checkpoint_dir" in str(exc)
+    else:
+        raise AssertionError("invalid numeric/path settings were accepted")

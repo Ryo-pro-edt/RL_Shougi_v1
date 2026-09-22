@@ -8,7 +8,7 @@ from syougi_rl.model.network import PolicyValueNet
 
 def test_policy_value_network_returns_action_logits_and_scalar_value():
     model = PolicyValueNet(action_size=ACTION_SIZE)
-    logits, value = model(torch.zeros(2, 31, 9, 9))
+    logits, value = model(torch.zeros(2, 43, 9, 9))
 
     assert logits.shape == (2, ACTION_SIZE)
     assert value.shape == (2, 1)

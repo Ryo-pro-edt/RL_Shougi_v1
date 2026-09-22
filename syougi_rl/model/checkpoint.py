@@ -30,7 +30,7 @@ def save_checkpoint(
         "optimizer_state": optimizer.state_dict() if optimizer is not None else None,
         "epoch": int(epoch),
         "config": dict(config),
-        "metadata": {"action_size": model.action_size, "feature_planes": 31},
+        "metadata": {"action_size": model.action_size, "feature_planes": FEATURE_PLANES},
     }
     torch.save(payload, destination)
     return destination

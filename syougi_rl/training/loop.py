@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import math
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,7 @@ import shogi
 import torch
 import yaml
 
-from syougi_rl.game.encoding import ACTION_SIZE
+from syougi_rl.game.encoding import ACTION_SIZE, encode_move
 from syougi_rl.game.state import GameState
 from syougi_rl.model.checkpoint import save_checkpoint
 from syougi_rl.model.device import select_device
@@ -26,6 +27,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "self_play_games": 2,
     "max_moves": 80,
     "mcts_simulations": 4,
+    "temperature": 1.0,
     "updates_per_epoch": 2,
     "batch_size": 8,
     "learning_rate": 0.001,
@@ -57,8 +59,16 @@ def _validate_config(config: dict[str, Any]) -> None:
             raise ValueError(f"{key} must be at least 1")
     if float(config["learning_rate"]) <= 0:
         raise ValueError("learning_rate must be positive")
+    if not math.isfinite(float(config["learning_rate"])):
+        raise ValueError("learning_rate must be finite")
+    if not isinstance(config["seed"], int) or isinstance(config["seed"], bool):
+        raise ValueError("seed must be an integer")
+    if not isinstance(config["checkpoint_dir"], str) or not config["checkpoint_dir"].strip():
+        raise ValueError("checkpoint_dir must be a non-empty path")
     if config["device"] not in {"auto", "cpu", "cuda"}:
         raise ValueError("device must be one of: auto, cuda, cpu")
+    if not math.isfinite(float(config["temperature"])) or float(config["temperature"]) < 0:
+        raise ValueError("temperature must be finite and non-negative")
 
 
 def _outcome_value(result: str, turn: int) -> float:
@@ -77,6 +87,14 @@ def _play_game(model: PolicyValueNet, config: dict[str, Any], device: torch.devi
             break
         features = state.features()
         move, policy, _ = search.search(state)
+        legal_moves = state.legal_moves()
+        legal_ids = [encode_move(candidate) for candidate in legal_moves]
+        temperature = float(config["temperature"])
+        if temperature > 0:
+            weights = np.power(np.maximum(policy[legal_ids], 1e-12), 1.0 / temperature)
+            weights /= weights.sum()
+            chosen_id = int(np.random.choice(legal_ids, p=weights))
+            move = next(candidate for candidate in legal_moves if encode_move(candidate) == chosen_id)
         positions.append((features, policy, state.board.turn))
         state.push(move)
     result = state.result()
