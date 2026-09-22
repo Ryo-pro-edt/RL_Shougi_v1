@@ -35,6 +35,11 @@ def piece_label(piece_type: int) -> str:
     return PIECE_LABELS.get(int(piece_type), "?")
 
 
+def piece_text_color(piece_type: int) -> str:
+    """Return red for promoted pieces and dark brown for unpromoted pieces."""
+    return "#c62828" if int(piece_type) >= 9 else "#21170e"
+
+
 def japanese_font(size: int) -> QFont:
     """Prefer installed Japanese fonts while keeping Windows/Linux fallbacks."""
     available = set(QFontDatabase.families())
@@ -159,7 +164,7 @@ class ShogiBoardWidget(QWidget):
             painter.setBrush(QBrush(QColor("#d7a45e")))
             painter.setPen(QPen(QColor("#6e431f"), max(1, int(cell * 0.025))))
             painter.drawPolygon(piece_polygon(cell, inverted=False))
-            painter.setPen(QPen(QColor("#21170e")))
+            painter.setPen(QPen(QColor(piece_text_color(piece.piece_type))))
             painter.setFont(japanese_font(max(12, int(cell * 0.48))))
             painter.drawText(-cell / 2, -cell / 2, cell, cell, Qt.AlignCenter, piece_label(piece.piece_type))
             painter.restore()
