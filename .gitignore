@@ -5,3 +5,15 @@ __pycache__/
 .venv/
 checkpoints/*.pt
 *.egg-info/
+
+# Local credentials and private keys
+.env
+.env.*
+!.env.example
+credentials.json
+service-account.json
+id_rsa
+*.pem
+*.key
+*.p12
+*.pfx
