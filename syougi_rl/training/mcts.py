@@ -46,15 +46,25 @@ class MCTS:
         if not legal_moves:
             raise ValueError("cannot search a terminal position")
         visits = np.zeros(ACTION_SIZE, dtype=np.float32)
-        value_total = 0.0
-        priors = np.zeros(ACTION_SIZE, dtype=np.float32)
+        value_sums = np.zeros(ACTION_SIZE, dtype=np.float32)
+        priors, root_value = self._prior_and_value(state)
+        legal_ids = [encode_move(move) for move in legal_moves]
         for _ in range(self.simulations):
-            current_priors, value = self._prior_and_value(state)
-            priors += current_priors
-            legal_ids = [encode_move(move) for move in legal_moves]
-            visits[legal_ids] += current_priors[legal_ids] + 1e-3
-            value_total += value
+            total = float(visits[legal_ids].sum())
+            q_values = np.divide(value_sums[legal_ids], np.maximum(visits[legal_ids], 1e-6))
+            exploration = 1.4 * priors[legal_ids] * np.sqrt(total + 1.0) / (1.0 + visits[legal_ids])
+            selected_index = int(np.argmax(q_values + exploration))
+            child = state.copy()
+            child.push(legal_moves[selected_index])
+            if child.is_game_over():
+                child_value = 0.0
+            else:
+                _, child_value = self._prior_and_value(child)
+            action = legal_ids[selected_index]
+            visits[action] += 1.0
+            value_sums[action] += child_value
         visits /= max(float(visits.sum()), 1e-8)
         best_id = max((encode_move(move) for move in legal_moves), key=lambda action: visits[action])
         best_move = next(move for move in legal_moves if encode_move(move) == best_id)
-        return best_move, visits, float(np.clip(value_total / self.simulations, -1.0, 1.0))
+        value = float(np.sum(value_sums) / max(float(visits.sum() * self.simulations), 1.0))
+        return best_move, visits, float(np.clip(value if self.simulations else root_value, -1.0, 1.0))

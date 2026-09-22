@@ -34,6 +34,8 @@ class GameWindow(QMainWindow):
         self.human_color = shogi.BLACK
         self.thread: QThread | None = None
         self.worker: InferenceWorker | None = None
+        self._game_generation = 0
+        self.ai_error = False
 
         self.checkpoint_box = QComboBox()
         self.checkpoint_box.addItems([str(path) for path in list_checkpoints(checkpoint_dir)])
@@ -53,9 +55,19 @@ class GameWindow(QMainWindow):
         form.addRow("手番", self.side_box)
         form.addRow(browse, start)
 
+        self.hand_layout = QHBoxLayout()
+        self.hand_buttons: dict[int, QPushButton] = {}
+        for piece_type, label in ((1, "歩"), (2, "香"), (3, "桂"), (4, "銀"), (5, "金"), (6, "角"), (7, "飛")):
+            button = QPushButton(label)
+            button.clicked.connect(lambda _checked=False, p=piece_type: self.on_drop_piece(p))
+            self.hand_buttons[piece_type] = button
+            self.hand_layout.addWidget(button)
+        form.addRow("持ち駒", self.hand_layout)
+
         self.status = QLabel("Checkpointを選択して対局開始を押してください")
         self.board = ShogiBoardWidget(self.controller)
         self.board.square_clicked.connect(self.on_square_clicked)
+        self.refresh_hand_buttons()
         layout = QVBoxLayout()
         layout.addLayout(form)
         layout.addWidget(self.status)
@@ -72,6 +84,9 @@ class GameWindow(QMainWindow):
             self.checkpoint_box.setCurrentText(path)
 
     def start_game(self) -> None:
+        if self.thread is not None:
+            QMessageBox.information(self, "AI探索中", "現在の対局が終わってから再開してください")
+            return
         path = self.checkpoint_box.currentText()
         if not path:
             QMessageBox.warning(self, "Checkpoint未選択", "対局に使うCheckpointを選択してください")
@@ -84,13 +99,16 @@ class GameWindow(QMainWindow):
         self.controller = BoardController()
         self.board.controller = self.controller
         self.human_color = self.side_box.currentData()
+        self._game_generation += 1
+        self.ai_error = False
         self.status.setText(f"対局開始（推論デバイス: {self.engine.device.type}）")
+        self.refresh_hand_buttons()
         self.board.update()
         if self.human_color == shogi.WHITE:
             self.request_ai_move()
 
     def on_square_clicked(self, square: int) -> None:
-        if self.engine is None or self.controller.state.board.turn != self.human_color:
+        if self.engine is None or self.ai_error or self.controller.state.board.turn != self.human_color:
             return
         if self.controller.highlighted_moves:
             candidates = self.controller.moves_for_destination(square)
@@ -101,10 +119,26 @@ class GameWindow(QMainWindow):
                     move = next((item for item in candidates if item.promotion == (answer == QMessageBox.Yes)), move)
                 self.controller.play_move(move)
                 self.board.update()
+                self.refresh_hand_buttons()
                 self._after_human_move()
                 return
         self.controller.select(square)
         self.board.update()
+
+    def on_drop_piece(self, piece_type: int) -> None:
+        if self.engine is None or self.ai_error or self.controller.state.board.turn != self.human_color:
+            return
+        self.controller.select_drop(piece_type)
+        self.board.update()
+
+    def refresh_hand_buttons(self) -> None:
+        hand = self.controller.state.board.pieces_in_hand[self.human_color]
+        enabled = self.engine is not None and not self.ai_error and self.controller.state.board.turn == self.human_color
+        for piece_type, button in self.hand_buttons.items():
+            label = button.text().split("×", 1)[0]
+            count = hand.get(piece_type, 0)
+            button.setText(f"{label}×{count}")
+            button.setEnabled(enabled and count > 0)
 
     def _after_human_move(self) -> None:
         if self.controller.state.is_game_over():
@@ -118,9 +152,10 @@ class GameWindow(QMainWindow):
         self.status.setText("AIが考えています…")
         self.thread = QThread(self)
         self.worker = InferenceWorker(self.engine, self.controller.state, self.simulations.value())
+        generation = self._game_generation
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
-        self.worker.move_ready.connect(self.on_ai_move)
+        self.worker.move_ready.connect(lambda move, gen=generation: self.on_ai_move(move, gen))
         self.worker.error.connect(self.on_ai_error)
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
@@ -128,10 +163,13 @@ class GameWindow(QMainWindow):
         self.thread.finished.connect(self.on_ai_finished)
         self.thread.start()
 
-    def on_ai_move(self, move) -> None:
+    def on_ai_move(self, move, generation: int | None = None) -> None:
+        if generation is not None and generation != self._game_generation:
+            return
         try:
             self.controller.state.push(move)
             self.board.update()
+            self.refresh_hand_buttons()
             self.status.setText("あなたの手番です")
             if self.controller.state.is_game_over():
                 self.status.setText(f"終局: {self.controller.state.result()}")
@@ -139,12 +177,21 @@ class GameWindow(QMainWindow):
             self.on_ai_error(str(exc))
 
     def on_ai_error(self, message: str) -> None:
+        self.ai_error = True
         self.status.setText(f"AIエラー: {message}")
         QMessageBox.critical(self, "AIエラー", message)
 
     def on_ai_finished(self) -> None:
         self.thread = None
         self.worker = None
+
+    def closeEvent(self, event) -> None:
+        if self.thread is not None:
+            self.thread.quit()
+            self.thread.wait(10_000)
+            self.thread = None
+            self.worker = None
+        event.accept()
 
 
 def run_gui() -> int:

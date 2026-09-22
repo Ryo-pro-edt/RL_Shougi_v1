@@ -48,9 +48,12 @@ def load_config(path: str | Path) -> dict[str, Any]:
 
 
 def _validate_config(config: dict[str, Any]) -> None:
-    positive = ("epochs", "self_play_games", "max_moves", "mcts_simulations", "updates_per_epoch", "batch_size")
+    positive = (
+        "epochs", "self_play_games", "max_moves", "mcts_simulations", "updates_per_epoch",
+        "batch_size", "replay_capacity", "checkpoint_every",
+    )
     for key in positive:
-        if int(config[key]) < 1:
+        if not isinstance(config[key], int) or isinstance(config[key], bool) or config[key] < 1:
             raise ValueError(f"{key} must be at least 1")
     if float(config["learning_rate"]) <= 0:
         raise ValueError("learning_rate must be positive")

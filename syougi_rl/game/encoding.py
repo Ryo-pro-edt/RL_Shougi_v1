@@ -41,7 +41,13 @@ def decode_move(action_id: int, board: shogi.Board | None = None) -> shogi.Move:
     if action_id >= NORMAL_ACTION_SIZE:
         drop_id = action_id - NORMAL_ACTION_SIZE
         piece_index, to_square = divmod(drop_id, BOARD_SQUARES)
-        return shogi.Move(None, to_square, drop_piece_type=DROP_PIECES[piece_index])
+        move = shogi.Move(None, to_square, drop_piece_type=DROP_PIECES[piece_index])
+        if board is not None and move not in board.legal_moves:
+            raise ValueError(f"decoded move is not legal: {move.usi()}")
+        return move
     move_id, promotion = divmod(action_id, 2)
     from_square, to_square = divmod(move_id, BOARD_SQUARES)
-    return shogi.Move(from_square, to_square, promotion=bool(promotion))
+    move = shogi.Move(from_square, to_square, promotion=bool(promotion))
+    if board is not None and move not in board.legal_moves:
+        raise ValueError(f"decoded move is not legal: {move.usi()}")
+    return move

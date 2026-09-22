@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
+import warnings
 
 from syougi_rl.game.encoding import ACTION_SIZE
 from syougi_rl.game.state import GameState
@@ -35,6 +36,15 @@ class CheckpointEngine:
             model = PolicyValueNet(ACTION_SIZE)
             load_checkpoint(checkpoint, model, device=str(target))
             model.to(target).eval()
+        except RuntimeError as exc:
+            if target.type == "cuda" and "cuda" in str(exc).lower():
+                warnings.warn("CUDA inference failed; retrying this Checkpoint on CPU", RuntimeWarning)
+                target = torch.device("cpu")
+                model = PolicyValueNet(ACTION_SIZE)
+                load_checkpoint(checkpoint, model, device="cpu")
+                model.to(target).eval()
+            else:
+                raise ValueError(f"Checkpoint could not be loaded: {checkpoint}") from exc
         except (FileNotFoundError, ValueError):
             raise
         except Exception as exc:

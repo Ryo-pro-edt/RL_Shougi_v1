@@ -19,5 +19,8 @@ dependencies = [
 syougi-train = "train:main"
 syougi-play = "play_gui:run_gui"
 
+[tool.setuptools]
+py-modules = ["train", "play_gui"]
+
 [tool.setuptools.packages.find]
 include = ["syougi_rl*"]

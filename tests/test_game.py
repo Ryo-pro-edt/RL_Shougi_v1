@@ -1,5 +1,6 @@
 import numpy as np
 import shogi
+import pytest
 
 from syougi_rl.game.encoding import ACTION_SIZE, decode_move, encode_move
 from syougi_rl.game.state import GameState
@@ -11,7 +12,7 @@ def test_initial_position_has_thirty_legal_moves_and_features():
     assert len(state.legal_moves()) == 30
     features = state.features()
     assert isinstance(features, np.ndarray)
-    assert features.shape == (29, 9, 9)
+    assert features.shape == (31, 9, 9)
     assert features.dtype == np.float32
 
 
@@ -43,10 +44,19 @@ def test_game_state_rejects_illegal_action_after_decode():
     move = shogi.Move.from_usi("9a9b")
 
     assert move not in state.legal_moves()
-    assert decode_move(encode_move(move), state.board) == move
-    try:
+    with pytest.raises(ValueError, match="legal"):
+        decode_move(encode_move(move), state.board)
+    with pytest.raises(ValueError, match="legal"):
         state.push(move)
-    except ValueError as exc:
-        assert "legal" in str(exc).lower()
-    else:
-        raise AssertionError("illegal move was accepted")
+
+
+def test_copy_is_independent_and_piece_planes_do_not_overlap_hands():
+    state = GameState.initial()
+    copied = state.copy()
+    copied.push(shogi.Move.from_usi("9g9f"))
+
+    assert len(state.legal_moves()) == 30
+    assert copied.board.sfen() != state.board.sfen()
+    # Black/white kings have dedicated board planes, not hand planes.
+    assert state.features()[7].sum() == 1.0
+    assert state.features()[15].sum() == 1.0

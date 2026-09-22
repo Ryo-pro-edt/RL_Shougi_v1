@@ -33,7 +33,7 @@ PowerShellでPython 3.11以上の仮想環境を作成します。
 
 ```powershell
 py -3.11 -m venv .venv
-\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 ```
 
@@ -78,7 +78,7 @@ Notebookは独自実装を持たず、`syougi_rl.training.train` を呼び出し
 python play_gui.py
 ```
 
-起動画面で `checkpoints/epoch_000001.pt` などのCheckpointを選び、先手/後手と探索回数を指定して「対局開始」を押します。推論も `auto` が既定で、CUDA利用可能ならGPU、不可ならCPUです。自分の駒をクリックすると合法な移動先がドットで表示されます。持ち駒は盤面外の操作UIを今後追加する余地を残し、現版では盤面上の駒選択と合法手表示を安定して提供します。成りが選べる手では確認ダイアログを表示します。
+起動画面で `checkpoints/epoch_000001.pt` などのCheckpointを選び、先手/後手と探索回数を指定して「対局開始」を押します。推論も `auto` が既定で、CUDA利用可能ならGPU、不可ならCPUです。自分の駒をクリックすると合法な移動先がドットで表示されます。持ち駒ボタンをクリックすると合法な打ち先が表示されます。成りが選べる手では確認ダイアログを表示します。
 
 ## テスト
 

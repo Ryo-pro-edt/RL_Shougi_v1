@@ -1,6 +1,7 @@
 from syougi_rl.gui.board import BoardController
 from syougi_rl.game.state import GameState
 from syougi_rl.engine.inference import list_checkpoints
+from syougi_rl.gui.worker import InferenceWorker
 
 
 def test_selecting_initial_pawn_returns_legal_marker_moves():
@@ -35,3 +36,9 @@ def test_cancel_selection_clears_markers():
 
 def test_checkpoint_listing_handles_missing_directory(tmp_path):
     assert list_checkpoints(tmp_path / "missing") == []
+
+
+def test_inference_worker_copies_state_at_construction():
+    worker = InferenceWorker(None, GameState.initial(), simulations=1)
+
+    assert worker.state.board.sfen() == GameState.initial().board.sfen()
