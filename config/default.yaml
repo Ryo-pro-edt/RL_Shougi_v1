@@ -1,10 +1,11 @@
 # Short smoke-training defaults. Increase these values for stronger play.
+# if train this -> epochs++
 device: auto
 seed: 7
-epochs: 1
+epochs: 100 
 self_play_games: 2
 max_moves: 40
-mcts_simulations: 4
+mcts_simulations: 64
 temperature: 1.0
 updates_per_epoch: 2
 batch_size: 8
